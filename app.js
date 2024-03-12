@@ -2,6 +2,7 @@ const express = require("express");
 const database = require("./config/database");
 const vehicleRouter = require("./controllers/vehicle");
 const staticRouter = require("./controllers/static");
+const userRouter = require("./controllers/user");
 
 async function start() {
   const app = express();
@@ -23,6 +24,7 @@ async function start() {
 
   app.use("/vehicles", vehicleRouter);
   app.use("/static", staticRouter);
+  app.use("/users", userRouter);
 
   app.listen(8000, () => console.log("Server listening on port 8000."));
 }
