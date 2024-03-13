@@ -2,6 +2,8 @@ const router = require("express").Router();
 const Vehicle = require("../models/Vehicle");
 
 router.get("/", async (req, res) => {
+  console.log(req.isAuth);
+  console.log(req.userId);
   const vehicles = await Vehicle.find({});
   return res.json(vehicles);
 });

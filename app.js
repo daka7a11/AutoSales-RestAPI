@@ -3,6 +3,7 @@ const database = require("./config/database");
 const vehicleRouter = require("./controllers/vehicle");
 const staticRouter = require("./controllers/static");
 const userRouter = require("./controllers/user");
+const authMiddleware = require("./middleware/auth");
 
 async function start() {
   const app = express();
@@ -17,10 +18,12 @@ async function start() {
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, X-Authorization"
+      "Content-Type, Authorization"
     );
     next();
   });
+
+  app.use(authMiddleware);
 
   app.use("/vehicles", vehicleRouter);
   app.use("/static", staticRouter);
