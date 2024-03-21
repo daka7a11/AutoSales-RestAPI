@@ -94,7 +94,6 @@ module.exports = router;
 
 async function CheckEmail(email) {
   const user = await User.findOne({ email: email });
-  console.log(user);
   if (user) {
     throw new Error(`${email} already exists.`);
   }

@@ -3,11 +3,11 @@ const database = require("./config/database");
 const vehicleRouter = require("./controllers/vehicle");
 const staticRouter = require("./controllers/static");
 const userRouter = require("./controllers/user");
-const authMiddleware = require("./middleware/auth");
+const { authProps } = require("./middleware/auth");
 
 async function start() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
   await database();
 
   app.use((req, res, next) => {
@@ -23,7 +23,7 @@ async function start() {
     next();
   });
 
-  app.use(authMiddleware);
+  app.use(authProps);
 
   app.use("/vehicles", vehicleRouter);
   app.use("/static", staticRouter);
