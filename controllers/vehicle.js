@@ -4,7 +4,6 @@ const { isUser } = require("../middleware/guard");
 const User = require("../models/User");
 const Vehicle = require("../models/Vehicle");
 const { ValidationErrorsMapper } = require("../util");
-const jwt = require("jsonwebtoken");
 
 const vehicleValidation = [
   body("title")
@@ -28,11 +27,10 @@ const vehicleValidation = [
 
 router.get("/", async (req, res) => {
   const vehicles = await Vehicle.find({});
-  console.log(req.query.color);
   return res.json(vehicles);
 });
 
-router.post("/", vehicleValidation, isUser, async (req, res) => {
+router.post("/", isUser, vehicleValidation, async (req, res) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -57,7 +55,8 @@ router.post("/", vehicleValidation, isUser, async (req, res) => {
     mileage: Number(req.body.mileage),
     images: req.body.images,
     description: req.body.description,
-    owner: user,
+    createdAt: new Date(),
+    owner: req.userId,
   });
 
   const createdVehicle = await vehicle.save();
@@ -68,7 +67,7 @@ router.post("/", vehicleValidation, isUser, async (req, res) => {
   res.status(201).json(createdVehicle);
 });
 
-router.put("/:id", vehicleValidation, async (req, res) => {
+router.put("/:id", isUser, vehicleValidation, async (req, res) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
@@ -93,6 +92,7 @@ router.put("/:id", vehicleValidation, async (req, res) => {
   vehicle.mileage = Number(req.body.mileage);
   vehicle.images = req.body.images;
   vehicle.description = req.body.description;
+  vehicle.createdAt = new Date();
 
   try {
     const updatedVehicle = await vehicle.save();
@@ -104,38 +104,93 @@ router.put("/:id", vehicleValidation, async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", isUser, async (req, res) => {
   const vehicleId = req.params.id;
-  const token = req.headers["authorization"];
-
   const vehicle = await Vehicle.findById(vehicleId).populate("owner");
 
   if (!vehicle) {
     return res.status(404).json("Vehicle not found.");
   }
 
-  try {
-    const verifiedToken = jwt.verify(token, "secretKey");
-    if (verifiedToken._id !== vehicle.owner._id.toString()) {
-      return res.status(403).json("Forbidden.");
-    }
-
-    await Vehicle.findByIdAndDelete(vehicleId);
-
-    return res.json("Vehicle deleted.");
-  } catch (e) {
-    return res.status(401).json("Unauthorized.");
+  if (req.userId !== vehicle.owner._id.toString()) {
+    return res.status(403).json("Forbidden.");
   }
+
+  await Vehicle.findByIdAndDelete(vehicleId);
+
+  const user = await User.findById(req.userId);
+  user.myPosts = user.myPosts.filter((x) => x._id.toString() !== vehicleId);
+  await user.save();
+
+  return res.json("Vehicle deleted.");
+});
+
+router.get("/recently-added", async (req, res) => {
+  const recentlyAdded = await Vehicle.find({}).sort({ createdAt: -1 }).limit(5);
+  return res.json(recentlyAdded);
+});
+
+router.get("/my-posts", async (req, res) => {
+  const user = await User.findById(req.userId).populate("myPosts");
+  console.log(user);
+  return res.json(user.myPosts);
+});
+
+router.get("/most-liked", async (req, res) => {
+  let mostLiked = await Vehicle.find({});
+  mostLiked = mostLiked
+    .sort((a, b) => b.likes.length - a.likes.length)
+    .slice(0, 5);
+  return res.json(mostLiked);
 });
 
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
     const vehicle = await Vehicle.findById(id).populate("owner");
+
     return res.json(vehicle);
   } catch (e) {
+    if (e.path === "_id") {
+      return res.status(404).json("Vehicle not found.");
+    }
+
     console.log(e);
   }
+});
+
+router.post("/like/:id", isUser, async (req, res) => {
+  const vehicleId = req.params.id;
+
+  const vehicle = await Vehicle.findById(vehicleId).populate("likes");
+
+  if (vehicle.likes.some((l) => l._id.toString() === req.userId)) {
+    return res.status(400).json("Already liked.");
+  }
+
+  vehicle.likes.push(req.userId);
+
+  const likedVehicle = await vehicle.save();
+
+  return res.json(likedVehicle);
+});
+
+router.delete("/like/:id", isUser, async (req, res) => {
+  const vehicleId = req.params.id;
+
+  const vehicle = await Vehicle.findById(vehicleId).populate("likes");
+
+  if (!vehicle) {
+    return res.status(404).json("Vehicle not found.");
+  }
+
+  vehicle.likes = vehicle.likes.filter((l) => l._id.toString() !== req.userId);
+
+  const dislikedVehicle = await vehicle.save();
+
+  console.log(dislikedVehicle);
+
+  return res.json(dislikedVehicle);
 });
 
 module.exports = router;

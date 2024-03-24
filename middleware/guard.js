@@ -1,6 +1,6 @@
 function isUser(req, res, next) {
   if (!req.isAuth) {
-    return res.status(401).json([{ message: "Unauthorized." }]);
+    return res.status(401).json("Unauthorized.");
   }
   next();
 }

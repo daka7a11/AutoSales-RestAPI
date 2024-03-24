@@ -14,6 +14,7 @@ const vehicleSchema = new Schema({
   mileage: { type: Number, required: true },
   images: { type: [String] },
   description: { type: String, required: true },
+  createdAt: { type: Date, required: true },
   owner: { type: Schema.Types.ObjectId, required: true, ref: "User" },
   likes: { type: [Schema.Types.ObjectId], ref: "User" },
 });
